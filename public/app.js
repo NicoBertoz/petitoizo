@@ -1,6 +1,6 @@
 import {
   SPORTS, LEVELS, scoreSpotHour, scoreSpotDay, dirFromDegrees, DIR_FR, fromDir, orientationLabel,
-} from "./scoring.js";
+} from "./scoring.js?v=2";
 
 // ---------- état ----------
 const state = {
