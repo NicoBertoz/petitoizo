@@ -1,6 +1,6 @@
 import {
   SPORTS, LEVELS, scoreSpotHour, scoreSpotDay, dirFromDegrees, DIR_FR, fromDir, orientationLabel,
-} from "./scoring.js?v=4";
+} from "./scoring.js?v=5";
 
 // ---------- état ----------
 const state = {
@@ -704,8 +704,30 @@ function route() {
   window.scrollTo(0, 0);
 }
 
+// ---------- disclosure d'accueil ----------
+// Affichée une seule fois : le choix est mémorisé dans le navigateur.
+const DISCLOSURE_KEY = "pz_disclosure_v1";
+function setupDisclosure() {
+  const modal = $("#disclosure");
+  if (!modal) return;
+  try {
+    if (localStorage.getItem(DISCLOSURE_KEY)) return;
+  } catch { return; } // navigation privée verrouillée : on n'insiste pas
+  modal.classList.remove("hidden");
+  document.body.classList.add("modal-open");
+
+  const check = $("#disclosure-check"), ok = $("#disclosure-ok");
+  check.onchange = () => { ok.disabled = !check.checked; };
+  ok.onclick = () => {
+    try { localStorage.setItem(DISCLOSURE_KEY, new Date().toISOString()); } catch { /* tant pis */ }
+    modal.classList.add("hidden");
+    document.body.classList.remove("modal-open");
+  };
+}
+
 // ---------- init ----------
 async function init() {
+  setupDisclosure();
   renderPrefs();
   initMap();
   setupCitySearch();
