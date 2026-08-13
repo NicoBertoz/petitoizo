@@ -1,6 +1,6 @@
 import {
   SPORTS, LEVELS, scoreSpotHour, scoreSpotDay, dirFromDegrees, DIR_FR, fromDir, orientationLabel,
-} from "./scoring.js?v=5";
+} from "./scoring.js?v=6";
 
 // ---------- état ----------
 const state = {
@@ -299,7 +299,7 @@ function renderMap(results) {
     m.bindPopup(
       `<strong>${esc(spot.name)}</strong><br>` +
       (res
-        ? `<span class="popup-score" style="background:${res.color}">${res.score}</span> ${res.verdict}
+        ? `<span class="popup-score" style="background:${res.color}">${res.score}</span> ${res.emoji ?? ""} ${res.verdict}
            ${res.bestHour != null && state.hour === "auto" ? `- créneau le plus cohérent : ${res.bestHour} h` : ""}<br>`
         : spot.scorable ? "météo en cours de chargement...<br>"
         : "orientation du décollage inconnue : pas de score<br>") +
@@ -344,7 +344,7 @@ function renderList(results) {
       ${res
         ? `<div class="score-chip" style="background:${res.color}">
             <div class="n">${res.score}</div>
-            <span class="v">${res.verdict}</span>
+            <span class="v">${res.emoji ?? ""} ${res.verdict}</span>
             ${state.hour === "auto" && res.bestHour != null && res.score > 0 ? `<span class="h">à ${res.bestHour} h</span>` : ""}
           </div>`
         : spot.scorable
@@ -427,7 +427,7 @@ function renderSpotPage(slug) {
           </div>
         </div>
         ${res ? `<div class="big-score" style="background:${res.color}">
-          <div class="n">${res.score}</div><span class="v">${res.verdict}</span>
+          <div class="n">${res.score}</div><span class="v">${res.emoji ?? ""} ${res.verdict}</span>
           <span class="v">${fmtDay.format(days[state.day])} · ${hour} h</span>
         </div>` : ""}
       </div>
@@ -516,13 +516,14 @@ function buildScoreNarrative(res) {
   if (res.score === 0) {
     const gates = res.factors.filter((f) => f.gate && f.score === 0).map((f) => f.label.toLowerCase());
     return `Le score est de 0 car au moins une condition de sécurité n'est pas remplie (${gates.join(", ")}). ` +
-      `Ces conditions ne se négocient pas, quel que soit le niveau du pilote.`;
+      `En vol libre, ces conditions ne se négocient pas, quel que soit le niveau du pilote. Le détail de chaque facteur est expliqué ci-dessous.`;
   }
-  if (res.score >= 80) return `${good} facteurs sur ${res.factors.length} sont dans les clous du modèle. Cela ne dit pas que le vol est bon, seulement qu'aucune donnée prévue ne s'oppose au profil du site. Le facteur le plus juste reste « ${worst.label} » (${Math.round(worst.score * 100)}/100).`;
-  if (res.score >= 60) return `Le modèle ne signale rien de rédhibitoire, mais le facteur « ${worst.label} » (${Math.round(worst.score * 100)}/100) tire l'ensemble vers le bas. Lisez son explication avant toute décision.`;
-  if (res.score >= 40) return `Conditions mitigées dans le modèle : « ${worst.label} » (${Math.round(worst.score * 100)}/100) pèse fortement. Cela demande de l'expérience du site et une vraie observation sur place.`;
-  return `Le modèle décrit des conditions défavorables, principalement à cause de « ${worst.label} » (${Math.round(worst.score * 100)}/100).`;
+  if (res.score >= 80) return `${good} facteurs sur ${res.factors.length} sont au vert : les conditions de ce créneau sont très favorables pour un pilote ${state.level} en ${SPORTS[state.sport].label.toLowerCase()}. Chaque facteur est détaillé ci-dessous.`;
+  if (res.score >= 60) return `Les conditions sont globalement bonnes, mais le facteur « ${worst.label} » (${Math.round(worst.score * 100)}/100) limite le score. Lisez son explication ci-dessous avant de décider.`;
+  if (res.score >= 40) return `Conditions mitigées : le facteur « ${worst.label} » (${Math.round(worst.score * 100)}/100) pèse fortement sur le score. Ce n'est pas forcément non-volable, mais cela demande de l'expérience et de la vigilance.`;
+  return `Conditions défavorables, principalement à cause du facteur « ${worst.label} » (${Math.round(worst.score * 100)}/100). Mieux vaut choisir un autre créneau ou un autre site - le détail ci-dessous explique pourquoi.`;
 }
+
 
 
 // ---------- méthodologie ----------

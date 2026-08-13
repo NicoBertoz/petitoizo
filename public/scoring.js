@@ -103,7 +103,7 @@ export function scoreSpotHour(spot, wx, opts = {}) {
   // ---- 1. Nuit ----
   if (wx.isDay === 0) {
     return {
-      score: 0, verdict: "Nuit", color: "#64748b",
+      score: 0, verdict: "Nuit", color: "#64748b", emoji: "🌙",
       factors: [{ key: "night", label: "Jour / nuit", score: 0, weight: 1, gate: true,
         detail: "Il fait nuit à cette heure : le vol libre se pratique de jour (règles VFR)." }],
     };
@@ -280,18 +280,15 @@ export function scoreSpotHour(spot, wx, opts = {}) {
     score = Math.round(100 * mean * (0.4 + 0.6 * worst));
   }
 
-  // Vocabulaire volontairement descriptif, jamais prescriptif : Petitoizo dit ce que
-  // le modèle prévoit, il ne dit pas d'aller voler. Pas de note en étoiles, pas de
-  // smiley : personne ne doit décoller parce qu'une appli affichait un truc vert.
   const bands = [
-    [80, "Conditions cohérentes", "#10b981"],
-    [60, "Plutôt cohérentes", "#84cc16"],
-    [40, "Conditions mitigées", "#fbbf24"],
-    [20, "Peu favorables", "#fb923c"],
-    [0, "Incompatible", "#ef4444"],
+    [80, "Excellent", "#10b981", "🤩"],
+    [60, "Bon", "#84cc16", "😀"],
+    [40, "Moyen", "#fbbf24", "😐"],
+    [20, "Défavorable", "#fb923c", "😕"],
+    [0, "Ne pas voler", "#ef4444", "🚫"],
   ];
-  const [, verdict, color] = bands.find(([t]) => score >= t);
-  return { score, verdict, color, factors };
+  const [, verdict, color, emoji] = bands.find(([t]) => score >= t);
+  return { score, verdict, color, emoji, factors };
 }
 
 /**
@@ -305,5 +302,5 @@ export function scoreSpotDay(spot, hours, opts) {
     if (!best || r.score > best.score) best = { ...r, hour: wx.hour };
     return { hour: wx.hour, score: r.score, verdict: r.verdict, color: r.color };
   });
-  return { ...(best || { score: 0, verdict: "Ne pas voler", color: "#ef4444", hour: null }), bestHour: best?.hour ?? null, hourly };
+  return { ...(best || { score: 0, verdict: "Ne pas voler", color: "#ef4444", emoji: "🚫", hour: null }), bestHour: best?.hour ?? null, hourly };
 }
