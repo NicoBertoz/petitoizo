@@ -1,0 +1,130 @@
+[
+  {
+    "match": "6176",
+    "famous": true,
+    "level_min": "débutant",
+    "transport": ["voiture", "bus", "funiculaire"],
+    "transport_notes": "Bus depuis Grenoble jusqu'à Lumbin (atterrissage), puis funiculaire de Montfort ou navette école jusqu'au plateau. Parking au décollage.",
+    "fr_notes": "LE site mythique de la région (Coupe Icare). Deux décollages face Est dominant la vallée du Grésivaudan, immense atterrissage officiel à Lumbin. Écoles sur place, très fréquenté. Conditions généralement douces le matin, thermiques puissants l'été en mi-journée. Attention à la sur-fréquentation et aux confluences en fin d'après-midi."
+  },
+  {
+    "match": "22689",
+    "famous": true,
+    "level_min": "intermédiaire",
+    "transport": ["voiture", "bus"],
+    "transport_notes": "Bus Transisère T87/express depuis Grenoble jusqu'à Chamrousse en saison. Télécabine possible l'hiver.",
+    "fr_notes": "Grand décollage à la Croix de Chamrousse (2219 m), face Ouest sur la vallée de Grenoble. Gros dénivelé, vols du soir magiques. Thermiques forts en été à la mi-journée — à réserver aux pilotes autonomes dans ces créneaux. Atterrissage officiel à Vaulnaveys / Uriage selon consigne club."
+  },
+  {
+    "match": "2791",
+    "famous": true,
+    "level_min": "intermédiaire",
+    "transport": ["voiture", "bus"],
+    "transport_notes": "Bus depuis Grenoble en saison, route de Chamrousse.",
+    "fr_notes": "Décollage de l'Aiguille / la Croix à Chamrousse. Face Ouest, vols plaine-montagne au-dessus d'Uriage. Brise de vallée bien établie l'après-midi."
+  },
+  {
+    "match": "3005",
+    "famous": true,
+    "level_min": "débutant",
+    "transport": ["voiture", "bus"],
+    "transport_notes": "Route du Revard depuis Aix-les-Bains, bus saisonnier. Gare SNCF à Aix-les-Bains (13 km de l'atterrissage).",
+    "fr_notes": "Le Revard, balcon du lac du Bourget (1515 m). Décollage Ouest face au lac, site école très apprécié, vols du soir en restitution exceptionnels. Attention au vent d'ouest fort qui crée du dégueulant derrière le plateau et à l'aérologie au-dessus du lac."
+  },
+  {
+    "match": "2995",
+    "famous": true,
+    "level_min": "débutant",
+    "transport": ["voiture"],
+    "transport_notes": "Route depuis Chambéry (15 min) jusqu'à Verel-Pragondran, courte marche.",
+    "fr_notes": "Site école du Nivolet, au-dessus de Chambéry. Décollage Sud-Ouest, aérologie douce le matin et en soldeur. Le site de proximité des Chambériens."
+  },
+  {
+    "match": "3015",
+    "famous": true,
+    "level_min": "intermédiaire",
+    "transport": ["voiture"],
+    "transport_notes": "Route du Col du Chat puis piste vers le relais du Mont du Chat.",
+    "fr_notes": "Le Mont du Chat, au-dessus du lac du Bourget. Décollage Est, gros potentiel de vol de distance le long de l'Épine. Restitution au-dessus du lac le soir. Aérologie exigeante par vent d'ouest (rotors sous le vent de la crête)."
+  },
+  {
+    "match": "3007",
+    "famous": true,
+    "level_min": "intermédiaire",
+    "transport": ["voiture"],
+    "transport_notes": "Route du col de l'Épine depuis Novalaise ou Chambéry.",
+    "fr_notes": "L'Épine, face Est au-dessus du lac d'Aiguebelette. Beau site de soaring et de thermique, cadre magnifique sur le lac."
+  },
+  {
+    "match": "2800",
+    "famous": true,
+    "level_min": "intermédiaire",
+    "transport": ["voiture"],
+    "transport_notes": "Route des 7 Laux jusqu'à Prapoutel.",
+    "fr_notes": "Prapoutel — Les 7 Laux (1970 m), décollage Ouest sur le Grésivaudan. Gros dénivelé, thermiques dynamiques l'été, très beaux vols au couchant."
+  },
+  {
+    "match": "2793",
+    "famous": true,
+    "level_min": "intermédiaire",
+    "transport": ["voiture"],
+    "transport_notes": "Depuis Saint-Jean-de-Moirans / La Placette.",
+    "fr_notes": "Le Grand Ratz, entre Voreppe et Voiron. Décollage Sud-Est dominant la cluse de Voreppe. Bon site de thermique de proximité pour le bassin voironnais."
+  },
+  {
+    "match": "7257",
+    "famous": true,
+    "level_min": "confirmé",
+    "transport": ["voiture", "marche"],
+    "transport_notes": "Col du Coq en voiture puis ~1h de marche.",
+    "fr_notes": "La Dent de Crolles (2050 m), décollage en altitude après marche d'approche. Vol montagne engagé, réservé aux pilotes autonomes : aérologie de crête, pas de dégagement proche."
+  },
+  {
+    "match": "2785",
+    "famous": true,
+    "level_min": "intermédiaire",
+    "transport": ["voiture", "télécabine"],
+    "transport_notes": "Télécabine de la Scia l'hiver et en été (juillet-août), sinon marche depuis Saint-Pierre-de-Chartreuse.",
+    "fr_notes": "La Scia, au cœur de la Chartreuse. Décollages Ouest et Sud, beau vol au-dessus de Saint-Pierre-de-Chartreuse."
+  },
+  {
+    "match": "2797",
+    "famous": false,
+    "level_min": "débutant",
+    "transport": ["voiture"],
+    "transport_notes": "Route de Lans-en-Vercors, accès facile.",
+    "fr_notes": "Site école du Vercors nord, pentes douces idéales pour les premiers vols."
+  },
+  {
+    "match": "21842",
+    "famous": true,
+    "level_min": "débutant",
+    "transport": ["voiture", "bus"],
+    "transport_notes": "Bus depuis Annecy vers Talloires puis montée à Planfait.",
+    "fr_notes": "Planfait, au-dessus du lac d'Annecy. Site école majeur, décollage Ouest, atterrissage officiel à Doussard/Perroix selon consigne. Très fréquenté l'été."
+  },
+  {
+    "match": "3046",
+    "famous": true,
+    "level_min": "débutant",
+    "transport": ["voiture", "bus"],
+    "transport_notes": "Col de la Forclaz par Montmin, navettes écoles depuis Doussard.",
+    "fr_notes": "La Forclaz de Montmin, le grand classique du lac d'Annecy. Décollage Ouest/Nord-Ouest face au lac, restitution du soir exceptionnelle, atterrissage à Doussard. Très fréquenté."
+  },
+  {
+    "match": "22643",
+    "famous": false,
+    "level_min": "intermédiaire",
+    "transport": ["voiture", "marche"],
+    "transport_notes": "Col de Porte puis marche vers le Charmant Som.",
+    "fr_notes": "Le Charmant Som, vol montagne en Chartreuse après une marche courte depuis la route du col."
+  },
+  {
+    "match": "2992",
+    "famous": true,
+    "level_min": "débutant",
+    "transport": ["voiture"],
+    "transport_notes": "Route depuis Saint-Jeoire-Prieuré / Montlambert, 20 min de Chambéry.",
+    "fr_notes": "Montlambert, face Ouest au-dessus de la combe de Chambéry. Site école et de soaring très utilisé par les clubs chambériens, vols du soir réputés."
+  }
+]

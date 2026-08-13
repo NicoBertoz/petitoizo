@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Petitoizo — où voler aujourd'hui ?</title>
+  <meta name="description" content="Choisissez où aller voler en parapente en sécurité, selon les conditions météo prévues, votre niveau et votre sport." />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🪂</text></svg>" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#/">
+      <span class="brand-icon">🪂</span>
+      <span><strong>Petitoizo</strong><small>où voler, en sécurité</small></span>
+    </a>
+    <div class="prefs">
+      <label>Sport
+        <select id="sport-select"></select>
+      </label>
+      <label>Niveau
+        <select id="level-select"></select>
+      </label>
+    </div>
+  </header>
+
+  <main id="view-list" class="view">
+    <section class="controls">
+      <div class="loc-row">
+        <button id="btn-geoloc" class="btn" title="Utiliser ma position">📍 Ma position</button>
+        <div class="city-box">
+          <input id="city-input" type="text" placeholder="ou une ville… (ex : Grenoble)" autocomplete="off" />
+          <div id="city-suggestions" class="suggestions hidden"></div>
+        </div>
+      </div>
+      <div id="day-chips" class="day-chips"></div>
+      <div class="hour-row">
+        <span class="hour-label">Créneau :</span>
+        <div id="hour-chips" class="hour-chips"></div>
+      </div>
+    </section>
+
+    <section class="content">
+      <div id="map"></div>
+      <div class="list-pane">
+        <div id="wx-status" class="wx-status"></div>
+        <div id="spot-list" class="spot-list"><p class="muted">Chargement…</p></div>
+      </div>
+    </section>
+  </main>
+
+  <main id="view-spot" class="view hidden"></main>
+
+  <footer class="foot">
+    <div>
+      Météo : <select id="snapshot-select"></select>
+    </div>
+    <div class="foot-links">
+      <a href="#/methodo">Comprendre le score</a>
+      <span>·</span>
+      <span>Données spots : ParaglidingEarth / FFVL · Météo : Open-Meteo</span>
+    </div>
+    <p class="disclaimer">⚠️ Petitoizo est une aide à la décision, pas une autorisation de vol. Consultez toujours les balises FFVL, la biroute et les pilotes locaux avant de décoller.</p>
+  </footer>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
