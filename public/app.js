@@ -134,18 +134,15 @@ function renderPrefs() {
   levelSel.onchange = () => { state.level = levelSel.value; localStorage.setItem("pz_level", state.level); rerender(); };
 }
 
-function renderDayChips() {
+function renderDaySelect() {
   const days = forecastDates();
-  const fmt = new Intl.DateTimeFormat("fr-FR", { weekday: "short", day: "numeric", month: "short" });
-  const today = new Date().toISOString().slice(0, 10);
-  $("#day-chips").innerHTML = days.map((d, i) => {
-    const iso = d.toISOString().slice(0, 10);
-    const label = iso === today ? "Aujourd'hui" : fmt.format(d);
-    return `<button class="chip ${i === state.day ? "active" : ""}" data-day="${i}">${label}</button>`;
+  const fmt = new Intl.DateTimeFormat("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+  const sel = $("#day-select");
+  sel.innerHTML = days.map((d, i) => {
+    const label = i === 0 ? "Aujourd'hui" : i === 1 ? "Demain" : fmt.format(d);
+    return `<option value="${i}" ${i === state.day ? "selected" : ""}>${label}</option>`;
   }).join("");
-  $("#day-chips").querySelectorAll("button").forEach((b) => {
-    b.onclick = () => { state.day = +b.dataset.day; rerender(); };
-  });
+  sel.onchange = () => { state.day = +sel.value; rerender(); };
 }
 
 function renderHourChips() {
@@ -178,7 +175,7 @@ function renderMap(results) {
     });
     m.bindPopup(
       `<strong>${esc(spot.name)}</strong><br>
-       <span class="popup-score" style="background:${res.color}">${res.score}</span> ${res.verdict}
+       <span class="popup-score" style="background:${res.color}">${res.score}</span> ${res.emoji ?? ""} ${res.verdict}
        ${res.bestHour != null && state.hour === "auto" ? `— meilleur créneau ${res.bestHour} h` : ""}<br>
        <a href="#/spot/${spot.slug}">Voir le détail →</a>`);
     m.addTo(markersLayer);
@@ -214,7 +211,7 @@ function renderList(results) {
         <h3>${esc(spot.name)}</h3>
         <div class="meta">${spot.altitude ? spot.altitude + " m · " : ""}${Math.round(dist)} km · déco ${orientationLabel(spot.orientations)}</div>
         <div class="badges">
-          ${spot.famous ? '<span class="badge">★ site majeur</span>' : ""}
+          ${spot.famous ? '<span class="badge star">★ site majeur</span>' : ""}
           <span class="badge">${esc(spot.level_min)}</span>
           ${(spot.transport || []).map((t) => `<span class="badge">${esc(t)}</span>`).join("")}
           ${spot.thermals ? '<span class="badge">thermique</span>' : ""}
@@ -223,7 +220,7 @@ function renderList(results) {
       </div>
       <div class="score-chip" style="background:${res.color}">
         <div class="n">${res.score}</div>
-        <span class="v">${res.verdict}</span>
+        <span class="v">${res.emoji ?? ""} ${res.verdict}</span>
         ${state.hour === "auto" && res.bestHour != null && res.score > 0 ? `<span class="h">à ${res.bestHour} h</span>` : ""}
       </div>
     </div>`;
@@ -294,7 +291,7 @@ function renderSpotPage(slug) {
           </div>
         </div>
         ${res ? `<div class="big-score" style="background:${res.color}">
-          <div class="n">${res.score}</div><span class="v">${res.verdict}</span>
+          <div class="n">${res.score}</div><span class="v">${res.emoji ?? ""} ${res.verdict}</span>
           <span class="v">${fmtDay.format(days[state.day])} · ${hour} h</span>
         </div>` : ""}
       </div>
@@ -424,15 +421,39 @@ function setupCitySearch() {
   };
   document.addEventListener("click", (e) => { if (!box.contains(e.target) && e.target !== input) box.classList.add("hidden"); });
 
-  $("#btn-geoloc").onclick = () => {
-    navigator.geolocation?.getCurrentPosition(
-      (pos) => {
-        state.center = { lat: pos.coords.latitude, lon: pos.coords.longitude, label: "Ma position" };
-        input.value = "";
-        map.setView([state.center.lat, state.center.lon], 10);
+  // clavier : Entrée valide la première suggestion
+  input.onkeydown = (e) => {
+    if (e.key === "Enter") { box.querySelector("div")?.click(); e.preventDefault(); }
+    if (e.key === "Escape") box.classList.add("hidden");
+  };
+
+  const geoBtn = $("#btn-geoloc");
+  geoBtn.onclick = () => {
+    if (!navigator.geolocation) { alert("Géolocalisation indisponible — cherchez une ville."); return; }
+    geoBtn.classList.add("busy");
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        geoBtn.classList.remove("busy");
+        const { latitude: lat, longitude: lon } = pos.coords;
+        state.center = { lat, lon, label: "Ma position" };
+        // géocodage inverse pour afficher la commune dans le champ
+        input.value = "📍 Ma position";
+        try {
+          const r = await fetch(`https://geo.api.gouv.fr/communes?lat=${lat}&lon=${lon}&fields=nom&limit=1`);
+          const [commune] = await r.json();
+          if (commune?.nom) {
+            input.value = `📍 ${commune.nom}`;
+            state.center.label = commune.nom;
+          }
+        } catch { /* le libellé générique suffit */ }
+        box.classList.add("hidden");
+        map.setView([lat, lon], 10);
         rerender();
       },
-      () => alert("Impossible de vous géolocaliser — cherchez une ville à la place."),
+      () => {
+        geoBtn.classList.remove("busy");
+        alert("Impossible de vous géolocaliser — cherchez une ville à la place.");
+      },
       { timeout: 8000 });
   };
 }
@@ -459,7 +480,7 @@ async function setupSnapshots() {
       state.fetchedAt = snap.fetched_at;
       state.day = 0;
     }
-    renderDayChips();
+    renderDaySelect();
     rerender();
   };
 }
@@ -483,13 +504,13 @@ function rerenderList() {
   renderMap(results);
   renderList(results);
   renderStatus();
-  renderDayChips();
+  renderDaySelect();
   renderHourChips();
 }
 
 function rerender() {
   const hash = location.hash || "#/";
-  if (hash.startsWith("#/spot/")) { renderDayChips(); renderHourChips(); renderSpotPage(decodeURIComponent(hash.slice(7))); }
+  if (hash.startsWith("#/spot/")) { renderDaySelect(); renderHourChips(); renderSpotPage(decodeURIComponent(hash.slice(7))); }
   else rerenderList();
 }
 

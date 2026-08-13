@@ -103,7 +103,7 @@ export function scoreSpotHour(spot, wx, opts = {}) {
   // ---- 1. Nuit ----
   if (wx.isDay === 0) {
     return {
-      score: 0, verdict: "Nuit", color: "#5b6270",
+      score: 0, verdict: "Nuit", color: "#64748b", emoji: "🌙",
       factors: [{ key: "night", label: "Jour / nuit", score: 0, weight: 1, gate: true,
         detail: "Il fait nuit à cette heure : le vol libre se pratique de jour (règles VFR)." }],
     };
@@ -266,14 +266,14 @@ export function scoreSpotHour(spot, wx, opts = {}) {
   }
 
   const bands = [
-    [80, "Excellent", "#1a9850"],
-    [60, "Bon", "#66bd63"],
-    [40, "Moyen", "#fdae61"],
-    [20, "Défavorable", "#f46d43"],
-    [0, "Ne pas voler", "#d73027"],
+    [80, "Excellent", "#10b981", "🤩"],
+    [60, "Bon", "#84cc16", "😀"],
+    [40, "Moyen", "#fbbf24", "😐"],
+    [20, "Défavorable", "#fb923c", "😕"],
+    [0, "Ne pas voler", "#ef4444", "🚫"],
   ];
-  const [, verdict, color] = bands.find(([t]) => score >= t);
-  return { score, verdict, color, factors };
+  const [, verdict, color, emoji] = bands.find(([t]) => score >= t);
+  return { score, verdict, color, emoji, factors };
 }
 
 /**
@@ -287,5 +287,5 @@ export function scoreSpotDay(spot, hours, opts) {
     if (!best || r.score > best.score) best = { ...r, hour: wx.hour };
     return { hour: wx.hour, score: r.score, verdict: r.verdict, color: r.color };
   });
-  return { ...(best || { score: 0, verdict: "Ne pas voler", color: "#d73027", hour: null }), bestHour: best?.hour ?? null, hourly };
+  return { ...(best || { score: 0, verdict: "Ne pas voler", color: "#ef4444", emoji: "🚫", hour: null }), bestHour: best?.hour ?? null, hourly };
 }

@@ -7,6 +7,9 @@
   <meta name="description" content="Choisissez où aller voler en parapente en sécurité, selon les conditions météo prévues, votre niveau et votre sport." />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🪂</text></svg>" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -27,16 +30,20 @@
 
   <main id="view-list" class="view">
     <section class="controls">
-      <div class="loc-row">
-        <button id="btn-geoloc" class="btn" title="Utiliser ma position">📍 Ma position</button>
-        <div class="city-box">
-          <input id="city-input" type="text" placeholder="ou une ville… (ex : Grenoble)" autocomplete="off" />
+      <div class="control-row">
+        <div class="search-field">
+          <span class="search-icon" aria-hidden="true">🔎</span>
+          <input id="city-input" type="text" placeholder="Où décolle-t-on ? (ville, code postal…)" autocomplete="off" />
+          <button id="btn-geoloc" class="geoloc-btn" title="Utiliser ma position" aria-label="Utiliser ma position">📍</button>
           <div id="city-suggestions" class="suggestions hidden"></div>
         </div>
+        <div class="select-field">
+          <span class="select-icon" aria-hidden="true">📅</span>
+          <select id="day-select" aria-label="Jour de vol"></select>
+        </div>
       </div>
-      <div id="day-chips" class="day-chips"></div>
       <div class="hour-row">
-        <span class="hour-label">Créneau :</span>
+        <span class="hour-label">Créneau</span>
         <div id="hour-chips" class="hour-chips"></div>
       </div>
     </section>
