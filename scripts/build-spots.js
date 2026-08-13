@@ -178,14 +178,23 @@ function parseOSM() {
       landing: null,
     });
   }
-  // rattache l'atterrissage OSM le plus proche (< 6 km)
+  // Rattache l'atterrissage OSM le plus proche, mais seulement s'il est plausible :
+  // à moins de 4 km et plus bas que le décollage. Et on dit que c'est une déduction.
   for (const t of takeoffs) {
-    let best = null, bestD = 6000;
+    let best = null, bestD = 4000;
     for (const l of landings) {
       const d = haversine(t, l);
-      if (d < bestD) { bestD = d; best = l; }
+      if (d < bestD && (t.altitude == null || l.altitude == null || l.altitude < t.altitude - 50)) {
+        bestD = d; best = l;
+      }
     }
-    if (best) t.landing = { ...best, description: best.description || `Atterrissage OSM le plus proche (${Math.round(bestD)} m).` };
+    if (best) {
+      t.landing = {
+        ...best,
+        guessed: true,
+        description: `${best.description ? best.description + " " : ""}(atterrissage OpenStreetMap le plus proche, à ${Math.round(bestD)} m du décollage - déduit automatiquement, à vérifier)`,
+      };
+    }
   }
   return { takeoffs, landings };
 }
@@ -254,7 +263,49 @@ for (const o of osmSpots) {
 stats.pgeOnly = stats.pge - stats.common;
 
 // ---------- 4. Filtrage, enrichissement, qualité ----------
+// Un nom qui dit "atterrissage" est un atterrissage, quelle que soit la base d'origine.
+const LANDING_NAME = /\b(atterr?o|atterrissage|atterissage|landing|attero|posé|pose officiel)\b/i;
+
 let spots = merged.filter((s) => s.paragliding || s.hanggliding);
+
+// --- Filtre 1 : entrées nommées explicitement comme des atterrissages
+const droppedByName = spots.filter((s) => LANDING_NAME.test(s.name));
+spots = spots.filter((s) => !LANDING_NAME.test(s.name));
+
+// --- Filtre 2 : atterrissages déguisés en décollages.
+// Signature typique (cas signalé par les pilotes : "Saint-Jean-de-la-Porte") : aucune
+// orientation, aucune description, et un atterrissage connu à moins de 400 m et à la même
+// altitude. Sans orientation ni dénivelé, on ne peut de toute façon rien en dire.
+const landingPoints = [
+  ...osmLandings,
+  ...pgeSpots.filter((s) => s.landing).map((s) => s.landing),
+].filter((l) => l && l.lat && l.lon);
+
+const looksLikeLanding = (s) => {
+  // On ne touche qu'aux entrées totalement vides : ni orientation, ni description, ni accès.
+  // Elles ne sont de toute façon pas exploitables ; la question est seulement de savoir si
+  // on les affiche comme des décollages alors que ce sont des atterrissages.
+  const known = DIRS.some((d) => s.orientations[d] > 0);
+  if (known || s.takeoff_description || s.going_there) return false;
+
+  // a) un atterrissage déclaré est juste à côté, à la même altitude
+  const nearLanding = landingPoints.some((l) => {
+    const d = haversine(s, l);
+    if (d > 400) return false;
+    if (s.altitude == null || l.altitude == null) return true;
+    return Math.abs(s.altitude - l.altitude) < 60;
+  });
+  if (nearLanding) return true;
+
+  // b) le point est en fond de vallée, dominé de plus de 300 m par un décollage voisin
+  //    (cas "Saint-Jean-de-la-Porte", signalé par les pilotes : c'est l'attéro du Montlambert)
+  if (s.altitude == null) return false;
+  return merged.some((o) =>
+    o !== s && o.altitude != null && o.altitude - s.altitude > 300 && haversine(s, o) < 5000);
+};
+const droppedAsLanding = spots.filter(looksLikeLanding);
+spots = spots.filter((s) => !looksLikeLanding(s));
+stats.droppedLandings = droppedByName.length + droppedAsLanding.length;
 
 // spots ajoutés manuellement
 const extra = JSON.parse(readFileSync(join(ROOT, "data/extra-spots.json"), "utf8"));
@@ -282,28 +333,39 @@ for (const s of spots) {
     curated.find((c) => s.slug.includes(c.match) || s.name.toLowerCase().includes(c.match));
   if (c) { const { match, ...rest } = c; Object.assign(s, rest); }
 
-  s.transport = s.transport || ["voiture"];
-  if (!s.level_min) {
-    const txt = `${s.takeoff_description} ${s.comments}`.toLowerCase();
-    if (/école|ecole|school|beginner|débutant|debutant|easy|facile|large take ?off/.test(txt)) s.level_min = "débutant";
-    else if (/unauthorized|no landing|expert|dangerous|strong|interdit/.test(txt)) s.level_min = "confirmé";
-    else s.level_min = "intermédiaire";
-  }
+  // Pas d'inférence de niveau : personne ne peut déduire d'une description en anglais
+  // qu'un site est "école". Le niveau n'est affiché que s'il vient d'une source.
   s.orientation_known = DIRS.some((d) => s.orientations[d] > 0);
-  // indice de complétude, sert à trier et à prévenir l'utilisateur
+
+  // Indice de complétude (0-6) : sert à trier ET à afficher honnêtement ce qu'on ignore.
   s.quality = [
     s.orientation_known, !!s.altitude, !!s.landing, !!s.takeoff_description,
-    !!(s.going_there || s.transport_notes), s.sources.length > 1,
+    !!s.going_there, s.sources.length > 1,
   ].filter(Boolean).length;
+
+  // Niveau de confiance affiché à l'utilisateur.
+  // "scorable" décide si on ose calculer un score : sans orientation de décollage,
+  // impossible de savoir si le vent est de face ou de cul, donc pas de score.
+  s.scorable = s.orientation_known;
+  s.confidence = !s.orientation_known ? "insuffisante"
+    : s.sources.length > 1 && s.quality >= 5 ? "bonne"
+    : s.quality >= 4 ? "moyenne" : "limitée";
+  s.missing = [
+    !s.orientation_known && "orientation du décollage",
+    !s.altitude && "altitude",
+    !s.landing && "atterrissage",
+    !s.takeoff_description && "description du décollage",
+    !s.going_there && "accès",
+  ].filter(Boolean);
   delete s.paragliding;
 }
 
 // tri : sites vedettes, puis les mieux documentés
-spots.sort((a, b) =>
-  (b.famous === true) - (a.famous === true) || b.quality - a.quality || a.name.localeCompare(b.name, "fr"));
+spots.sort((a, b) => b.quality - a.quality || a.name.localeCompare(b.name, "fr"));
 
 const withOrientation = spots.filter((s) => s.orientation_known).length;
 const withFFVL = spots.filter((s) => s.ffvl_url).length;
+const byConfidence = spots.reduce((a, s) => ({ ...a, [s.confidence]: (a[s.confidence] || 0) + 1 }), {});
 
 // pas de tirets cadratins dans les textes affichés, y compris ceux venant des sources
 const stripDashes = (o) => {
@@ -321,7 +383,7 @@ const out = {
     openstreetmap: "Overpass API, tags free_flying:* (largement issus de l'import FFVL)",
     petitoizo: "enrichissement manuel (data/curated.json, data/extra-spots.json)",
   },
-  stats: { ...stats, total: spots.length, withOrientation, withFFVL, osmLandings: osmLandings.length },
+  stats: { ...stats, total: spots.length, withOrientation, withFFVL, osmLandings: osmLandings.length, byConfidence },
   count: spots.length,
   spots,
 };
@@ -332,4 +394,6 @@ console.log(`OpenStreetMap    : ${stats.osm} décollages (+ ${osmLandings.length
 console.log(`  communs aux deux sources : ${stats.common}`);
 console.log(`  ParaglidingEarth seul    : ${stats.pgeOnly}`);
 console.log(`  OpenStreetMap seul       : ${stats.osmOnly}`);
+console.log(`  atterrissages écartés       : ${stats.droppedLandings}`);
 console.log(`TOTAL : ${spots.length} spots | orientation connue : ${withOrientation} (${Math.round(100 * withOrientation / spots.length)} %) | fiche FFVL : ${withFFVL}`);
+console.log(`confiance :`, byConfidence);

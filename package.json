@@ -5,7 +5,9 @@
   "type": "module",
   "description": "Où aller voler en parapente en sécurité, selon les conditions météo",
   "scripts": {
+    "sources": "node scripts/fetch-sources.js",
     "build:spots": "node scripts/build-spots.js",
+    "beacons": "node scripts/fetch-beacons.js",
     "fetch:forecast": "node scripts/fetch-forecast.js",
     "build": "npm run build:spots && npm run fetch:forecast",
     "serve": "npx serve public"

@@ -20,11 +20,13 @@ jobs:
         run: node scripts/fetch-sources.js
       - name: Reconstruire spots.json
         run: node scripts/build-spots.js
+      - name: Rafraîchir la liste des balises OpenWindMap
+        run: node scripts/fetch-beacons.js
       - name: Committer si la base a changé
         run: |
           git config user.name "petitoizo-bot"
           git config user.email "actions@github.com"
-          git add data/raw public/data/spots.json
+          git add data/raw public/data/spots.json public/data/beacons.json
           if git diff --cached --quiet; then
             echo "aucun changement"
           else

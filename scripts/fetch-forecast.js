@@ -47,7 +47,7 @@ async function fetchChunk(chunk) {
     `&longitude=${chunk.map((s) => s.lon.toFixed(4)).join(",")}` +
     // downscaling : on donne l'altitude réelle du décollage au lieu de celle du modèle
     `&elevation=${chunk.map((s) => (s.altitude != null && s.altitude > 0 ? Math.round(s.altitude) : "nan")).join(",")}` +
-    `&hourly=${API_VARS.join(",")}&forecast_days=8&timezone=Europe%2FParis&windspeed_unit=kmh`;
+    `&hourly=${API_VARS.join(",")}&forecast_days=5&timezone=Europe%2FParis&windspeed_unit=kmh&models=meteofrance_seamless`;
   for (let attempt = 1; attempt <= 3; attempt++) {
     const res = await fetch(url);
     if (res.ok) return res.json();
@@ -83,11 +83,16 @@ for (let i = 0; i < selected.length; i += CHUNK) {
   arr.forEach((d, j) => {
     const spot = chunk[j];
     const h = d.hourly;
-    if (!timeAxis) timeAxis = h.time;
+    // AROME/ARPEGE s'arrêtent avant la fin de la fenêtre demandée : on tronque à la
+    // dernière heure réellement prévue plutôt que d'afficher des trous.
+    const ws = h.windspeed_10m;
+    let valid = ws.length;
+    while (valid > 0 && ws[valid - 1] == null) valid--;
+    if (!timeAxis || valid < timeAxis.length) timeAxis = h.time.slice(0, valid);
     results[spot.slug] = {
       c: cellOf(spot.lat, spot.lon),
       e: Math.round(d.elevation ?? spot.altitude ?? 0),
-      v: API_VARS.map((name, k) => h[name].map((x) => enc(x, VARS[k]))),
+      v: API_VARS.map((name, k) => h[name].slice(0, valid).map((x) => enc(x, VARS[k]))),
     };
   });
   console.log(`  lot ${i / CHUNK + 1}/${Math.ceil(selected.length / CHUNK)} (${arr.length} spots)`);
@@ -98,15 +103,16 @@ for (let i = 0; i < selected.length; i += CHUNK) {
 const now = new Date();
 const meta = {
   fetched_at: now.toISOString(),
-  model: "Open-Meteo best_match (AROME 1 km / ARPEGE / ICON), downscalé à l'altitude du décollage",
+  model: "Météo-France AROME 1,3 km puis ARPEGE (Open-Meteo), downscalé à l'altitude du décollage",
   time_start: timeAxis[0],
   hours: timeAxis.length,
   vars: VARS,
 };
 
+const H = timeAxis.length;
 const cells = {};
 for (const [slug, r] of Object.entries(results)) {
-  (cells[r.c] ||= {})[slug] = { e: r.e, v: r.v };
+  (cells[r.c] ||= {})[slug] = { e: r.e, v: r.v.map((a) => a.slice(0, H)) };
 }
 for (const [cell, data] of Object.entries(cells)) {
   writeFileSync(join(LATEST, `${cell}.json`), JSON.stringify({ ...meta, cell, spots: data }));

@@ -1,6 +1,6 @@
 import {
   SPORTS, LEVELS, scoreSpotHour, scoreSpotDay, dirFromDegrees, DIR_FR, fromDir, orientationLabel,
-} from "./scoring.js?v=3";
+} from "./scoring.js?v=4";
 
 // ---------- état ----------
 const state = {
@@ -16,6 +16,7 @@ const state = {
   loadedCells: new Set(),
   liveDone: new Set(),
   index: null,
+  beacons: [],              // balises OpenWindMap (position seulement)
 };
 
 const DEFAULT_CENTER = { lat: 45.35, lon: 5.85, label: "Alpes du Nord" };
@@ -65,6 +66,9 @@ function wxAt(spot, dayIdx, hour) {
 }
 
 function scoreFor(spot, dayIdx, hour) {
+  // Sans orientation de décollage connue, on ne peut pas savoir si le vent est de face
+  // ou de cul : on n'affiche donc pas de score plutôt que d'en inventer un.
+  if (!spot.scorable) return null;
   const opts = { sport: state.sport, level: state.level };
   if (hour === "auto") {
     const hours = HOURS_SHOWN.map((hh) => wxAt(spot, dayIdx, hh)).filter(Boolean);
@@ -122,21 +126,26 @@ async function loadLive(list) {
       `?latitude=${chunk.map((s) => s.lat.toFixed(4)).join(",")}` +
       `&longitude=${chunk.map((s) => s.lon.toFixed(4)).join(",")}` +
       `&elevation=${chunk.map((s) => (s.altitude > 0 ? Math.round(s.altitude) : "nan")).join(",")}` +
-      `&hourly=${API_VARS.join(",")}&forecast_days=8&timezone=auto&windspeed_unit=kmh`;
+      `&hourly=${API_VARS.join(",")}&forecast_days=5&timezone=auto&windspeed_unit=kmh&models=meteofrance_seamless`;
     try {
       const res = await fetch(url);
       if (!res.ok) throw new Error(res.status);
       const data = await res.json();
       (Array.isArray(data) ? data : [data]).forEach((d, j) => {
         const spot = chunk[j], h = d.hourly;
+        // on tronque à la dernière heure réellement prévue par AROME/ARPEGE
+        let valid = h.windspeed_10m.length;
+        while (valid > 0 && h.windspeed_10m[valid - 1] == null) valid--;
         state.meta = {
-          time_start: h.time[0], hours: h.time.length, fetched_at: new Date().toISOString(),
-          model: "Open-Meteo en direct (AROME 1 km / ARPEGE / ICON), downscalé à l'altitude du décollage",
+          time_start: h.time[0],
+          hours: Math.min(valid, state.meta?.hours ?? valid),
+          fetched_at: new Date().toISOString(),
+          model: "Météo-France AROME 1,3 km puis ARPEGE, en direct, downscalé à l'altitude du décollage",
         };
         state.fc.set(spot.slug, {
           e: Math.round(d.elevation ?? spot.altitude ?? 0),
           v: API_VARS.map((name, k) =>
-            h[name].map((x) => (x == null ? null : VARS[k] === "p" ? Math.round(x * 10) : Math.round(x)))),
+            h[name].slice(0, valid).map((x) => (x == null ? null : VARS[k] === "p" ? Math.round(x * 10) : Math.round(x)))),
         });
         state.liveDone.add(spot.slug);
         changed = true;
@@ -183,6 +192,50 @@ function windRoseSVG(orientations, windDir, size = 64, color = null) {
     <text x="${c}" y="9" text-anchor="middle" font-size="8" fill="#6b7a8d">N</text>
     ${arrow}
   </svg>`;
+}
+
+// ---------- balises OpenWindMap (mesures réelles) ----------
+// Le modèle prévoit, la balise mesure. Sur un spot, la balise voisine est la seule
+// donnée qui dit ce qu'il se passe vraiment maintenant.
+function nearestBeacons(spot, maxKm = 20, limit = 3) {
+  return state.beacons
+    .map((b) => ({ b, dist: haversine(spot, b) }))
+    .filter((x) => x.dist <= maxKm)
+    .sort((a, b) => a.dist - b.dist)
+    .slice(0, limit);
+}
+
+async function renderBeacons(spot, containerId) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  const near = nearestBeacons(spot);
+  if (!near.length) {
+    el.innerHTML = `<p class="muted" style="font-size:0.82rem">Aucune balise OpenWindMap à moins de 20 km. Cherchez une balise FFVL ou Romma sur place.</p>`;
+    return;
+  }
+  el.innerHTML = near.map(({ b, dist }) =>
+    `<div class="beacon" data-id="${b.id}"><strong>${esc(b.name)}</strong>
+     <span class="muted">à ${dist.toFixed(1)} km</span><div class="beacon-val">lecture...</div></div>`).join("");
+
+  await Promise.all(near.map(async ({ b }) => {
+    const row = el.querySelector(`.beacon[data-id="${b.id}"] .beacon-val`);
+    try {
+      const d = await (await fetch(`https://api.pioupiou.fr/v1/live/${b.id}`)).json();
+      const m = d.data?.measurements;
+      if (!m || m.wind_speed_avg == null) throw new Error("pas de mesure");
+      const kmh = (x) => Math.round(x * 3.6);
+      const age = Math.round((Date.now() - Date.parse(m.date)) / 60000);
+      const dirName = m.wind_heading != null ? DIR_FR[dirFromDegrees(m.wind_heading)] : null;
+      const stale = age > 60;
+      row.innerHTML =
+        `<span class="beacon-wind">${kmh(m.wind_speed_avg)} km/h</span>` +
+        `<span class="muted"> (max ${kmh(m.wind_speed_max)})</span>` +
+        (dirName ? ` ${fromDir(dirName)}` : "") +
+        ` <span class="beacon-age${stale ? " stale" : ""}">${age < 60 ? `il y a ${age} min` : `il y a ${Math.round(age / 60)} h, à ignorer`}</span>`;
+    } catch {
+      row.innerHTML = `<span class="muted">mesure indisponible</span>`;
+    }
+  }));
 }
 
 // lien Météo-Parapente (modèle WRF 1,2 km) sur le spot, au jour et à l'heure choisis
@@ -239,16 +292,17 @@ function renderMap(results) {
   markersLayer.clearLayers();
   for (const { spot, res } of results) {
     const m = L.circleMarker([spot.lat, spot.lon], {
-      radius: spot.famous ? 10 : 7,
+      radius: res ? 8 : 5,
       color: "#ffffff", weight: 1.5,
-      fillColor: res ? res.color : "#b9c6d6", fillOpacity: res ? 0.95 : 0.6,
+      fillColor: res ? res.color : "#b9c6d6", fillOpacity: res ? 0.95 : 0.55,
     });
     m.bindPopup(
       `<strong>${esc(spot.name)}</strong><br>` +
       (res
-        ? `<span class="popup-score" style="background:${res.color}">${res.score}</span> ${res.emoji ?? ""} ${res.verdict}
-           ${res.bestHour != null && state.hour === "auto" ? `- meilleur créneau ${res.bestHour} h` : ""}<br>`
-        : "météo en cours de chargement...<br>") +
+        ? `<span class="popup-score" style="background:${res.color}">${res.score}</span> ${res.verdict}
+           ${res.bestHour != null && state.hour === "auto" ? `- créneau le plus cohérent : ${res.bestHour} h` : ""}<br>`
+        : spot.scorable ? "météo en cours de chargement...<br>"
+        : "orientation du décollage inconnue : pas de score<br>") +
       `<a href="#/spot/${spot.slug}">Voir le détail →</a>`);
     m.addTo(markersLayer);
   }
@@ -281,9 +335,8 @@ function renderList(results) {
         <h3>${esc(spot.name)}</h3>
         <div class="meta">${spot.altitude ? spot.altitude + " m · " : ""}${Math.round(dist)} km · déco ${orientationLabel(spot.orientations)}</div>
         <div class="badges">
-          ${spot.famous ? '<span class="badge star">★ site majeur</span>' : ""}
-          ${spot.ffvl_url ? '<span class="badge ffvl">FFVL</span>' : ""}
-          <span class="badge">${esc(spot.level_min)}</span>
+          ${spot.ffvl_url ? '<span class="badge ffvl">fiche FFVL</span>' : ""}
+          <span class="badge conf-${esc(spot.confidence)}">données ${esc(spot.confidence)}s</span>
           ${spot.thermals ? '<span class="badge">thermique</span>' : ""}
           ${spot.soaring ? '<span class="badge">soaring</span>' : ""}
         </div>
@@ -291,10 +344,12 @@ function renderList(results) {
       ${res
         ? `<div class="score-chip" style="background:${res.color}">
             <div class="n">${res.score}</div>
-            <span class="v">${res.emoji ?? ""} ${res.verdict}</span>
+            <span class="v">${res.verdict}</span>
             ${state.hour === "auto" && res.bestHour != null && res.score > 0 ? `<span class="h">à ${res.bestHour} h</span>` : ""}
           </div>`
-        : `<div class="score-chip loading"><div class="n">·</div><span class="v">chargement</span></div>`}
+        : spot.scorable
+          ? `<div class="score-chip loading"><div class="n">·</div><span class="v">chargement</span></div>`
+          : `<div class="score-chip nodata"><div class="n">?</div><span class="v">données insuffisantes</span></div>`}
     </div>`;
   }).join("");
   $("#spot-list").querySelectorAll(".spot-card").forEach((el) => {
@@ -361,7 +416,8 @@ function renderSpotPage(slug) {
             <div class="meta">
               Décollage ${spot.altitude ? spot.altitude + " m" : "altitude inconnue"} · orientation ${orientationLabel(spot.orientations)}
               ${spot.landing?.altitude != null ? ` · atterrissage ${spot.landing.altitude} m` : ""}<br>
-              Niveau conseillé : <strong>${esc(spot.level_min)}</strong>${spot.famous ? " · ★ site majeur" : ""}
+              Données <strong class="conf-${esc(spot.confidence)}">${esc(spot.confidence)}s</strong>${
+                spot.missing?.length ? ` (manque : ${esc(spot.missing.join(", "))})` : ""}
               ${spot.club ? `<br>Club : ${esc(spot.club)}` : ""}
             </div>
             <div class="transport-tags">
@@ -371,7 +427,7 @@ function renderSpotPage(slug) {
           </div>
         </div>
         ${res ? `<div class="big-score" style="background:${res.color}">
-          <div class="n">${res.score}</div><span class="v">${res.emoji ?? ""} ${res.verdict}</span>
+          <div class="n">${res.score}</div><span class="v">${res.verdict}</span>
           <span class="v">${fmtDay.format(days[state.day])} · ${hour} h</span>
         </div>` : ""}
       </div>
@@ -379,7 +435,11 @@ function renderSpotPage(slug) {
       <div class="hour-strip">${hourStrip}</div>
       <p class="muted" style="font-size:0.75rem;margin:2px 0 0">Score heure par heure - cliquez sur un créneau. ${dayRes?.bestHour != null ? `Meilleur créneau du jour : <strong>${dayRes.bestHour} h (${dayRes.score}/100)</strong>.` : ""}</p>
 
-      <h2 class="section-title">🧮 Pourquoi ce score ?</h2>
+      <h2 class="section-title">🧮 Comment lire ce chiffre</h2>
+      <p class="not-a-greenlight">Ce n'est pas un feu vert. Le chiffre dit seulement à quel point
+      les conditions <em>prévues par le modèle</em> collent aux caractéristiques connues du site,
+      pour un pilote ${esc(state.level)} en ${esc(SPORTS[state.sport].label.toLowerCase())}.
+      Il ignore l'aérologie locale, la réglementation, l'état du terrain et votre forme du jour.</p>
       <p class="explain-intro">${res ? buildScoreNarrative(res) : ""}</p>
       ${factorsHTML}
       <p class="explain-intro" style="margin-top:10px">
@@ -388,6 +448,22 @@ function renderSpotPage(slug) {
         à rendre un vol dangereux. Un facteur « éliminatoire » à zéro (pluie, vent de cul, vent trop fort...)
         met directement le score à 0. <a href="#/methodo">Méthodologie complète →</a>
       </p>
+
+      <div class="checklist">
+        <h4>Avant de décoller, ce que Petitoizo ne sait pas</h4>
+        <ul>
+          <li><strong>L'accès et la réglementation.</strong> Certains sites sont soumis à convention,
+          autorisation militaire ou fermeture saisonnière. Vérifiez la fiche FFVL et le club local.</li>
+          <li><strong>L'aérologie fine.</strong> Brises de pente, venturis, rotors et confluences ne
+          sont pas dans une maille de 1,3 km.</li>
+          <li><strong>L'état du terrain.</strong> Atterrissage fauché ou non, troupeaux, câbles, travaux.</li>
+          <li><strong>Vous.</strong> Fatigue, matériel, dernier vol il y a six mois.</li>
+        </ul>
+        <p>Les balises, la manche à air et les pilotes présents sur place restent la seule vérité.
+        ${spot.confidence === "insuffisante" || spot.confidence === "limitée"
+          ? `<br><strong>Sur ce spot en particulier, nos données sont ${esc(spot.confidence)}s${spot.missing?.length ? ` : il nous manque ${spot.missing.join(", ")}` : ""}.</strong>`
+          : ""}</p>
+      </div>
 
       <div class="spot-grid">
         <div>
@@ -407,6 +483,10 @@ Rafales : ${wx.windGusts} km/h
 🌡 ${wx.temp} °C · ☁️ ${wx.cloudcover} % (bas : ${wx.cloudLow ?? "?"} %) · 🌧 ${wx.precip.toFixed(1)} mm (prob. ${wx.precipProb ?? "?"} %)
 🪂 Plafond de la couche convective : ${wx.blh != null ? `${wx.blh} m sol, soit ~${Math.round((wx.elevation || 0) + wx.blh)} m d'altitude` : "?"}
 ❄️ Iso 0 °C : ${wx.freezing ?? "?"} m · ⚡ CAPE : ${wx.cape ?? 0} J/kg</p></div>` : ""}
+          <div class="info-block beacons-block"><h4>🛰 Vent mesuré à proximité (OpenWindMap)</h4>
+            <div id="beacons-live"></div>
+            <p class="muted" style="font-size:0.75rem;margin-top:6px">Mesures réelles des balises communautaires. En cas de désaccord avec le modèle, c'est la balise qui a raison.</p>
+          </div>
           <div class="info-block"><h4>Aller plus loin</h4>
             <p><a href="${meteoParapenteUrl(spot, state.day, hour)}" target="_blank" rel="noopener">Météo-Parapente sur ce spot ↗</a>
 <span class="muted" style="font-size:0.78rem">(modèle WRF 1,2 km, la référence des pilotes)</span>${
@@ -427,6 +507,7 @@ Rafales : ${wx.windGusts} km/h
   el.querySelectorAll(".hour-cell").forEach((c) => {
     c.onclick = () => { state.hour = +c.dataset.h; renderSpotPage(slug); };
   });
+  renderBeacons(spot, "beacons-live");
 }
 
 function buildScoreNarrative(res) {
@@ -435,13 +516,14 @@ function buildScoreNarrative(res) {
   if (res.score === 0) {
     const gates = res.factors.filter((f) => f.gate && f.score === 0).map((f) => f.label.toLowerCase());
     return `Le score est de 0 car au moins une condition de sécurité n'est pas remplie (${gates.join(", ")}). ` +
-      `En vol libre, ces conditions ne se négocient pas, quel que soit le niveau du pilote. Le détail de chaque facteur est expliqué ci-dessous.`;
+      `Ces conditions ne se négocient pas, quel que soit le niveau du pilote.`;
   }
-  if (res.score >= 80) return `${good} facteurs sur ${res.factors.length} sont au vert : les conditions de ce créneau sont très favorables pour un pilote ${state.level} en ${SPORTS[state.sport].label.toLowerCase()}. Chaque facteur est détaillé ci-dessous.`;
-  if (res.score >= 60) return `Les conditions sont globalement bonnes, mais le facteur « ${worst.label} » (${Math.round(worst.score * 100)}/100) limite le score. Lisez son explication ci-dessous avant de décider.`;
-  if (res.score >= 40) return `Conditions mitigées : le facteur « ${worst.label} » (${Math.round(worst.score * 100)}/100) pèse fortement sur le score. Ce n'est pas forcément non-volable, mais cela demande de l'expérience et de la vigilance.`;
-  return `Conditions défavorables, principalement à cause du facteur « ${worst.label} » (${Math.round(worst.score * 100)}/100). Mieux vaut choisir un autre créneau ou un autre site - le détail ci-dessous explique pourquoi.`;
+  if (res.score >= 80) return `${good} facteurs sur ${res.factors.length} sont dans les clous du modèle. Cela ne dit pas que le vol est bon, seulement qu'aucune donnée prévue ne s'oppose au profil du site. Le facteur le plus juste reste « ${worst.label} » (${Math.round(worst.score * 100)}/100).`;
+  if (res.score >= 60) return `Le modèle ne signale rien de rédhibitoire, mais le facteur « ${worst.label} » (${Math.round(worst.score * 100)}/100) tire l'ensemble vers le bas. Lisez son explication avant toute décision.`;
+  if (res.score >= 40) return `Conditions mitigées dans le modèle : « ${worst.label} » (${Math.round(worst.score * 100)}/100) pèse fortement. Cela demande de l'expérience du site et une vraie observation sur place.`;
+  return `Le modèle décrit des conditions défavorables, principalement à cause de « ${worst.label} » (${Math.round(worst.score * 100)}/100).`;
 }
+
 
 // ---------- méthodologie ----------
 function renderMethodoPage() {
@@ -453,11 +535,20 @@ function renderMethodoPage() {
       à une heure donnée, pour un sport et un niveau de pilote donnés. Il croise les caractéristiques du site
       (orientation du décollage, altitude, réputation thermique) avec les prévisions météo horaires.</p>
 
+      <p class="not-a-greenlight">Petitoizo ne recommande jamais de voler et ne classe pas les spots
+      par étoiles. Le chiffre décrit un écart entre des conditions prévues et les caractéristiques
+      connues d'un site. La décision de décoller n'appartient qu'au pilote, sur place.</p>
+
       <h2>Les données météo</h2>
-      <p>Open-Meteo, qui agrège les meilleurs modèles disponibles selon l'échéance : <strong>AROME 1 km</strong>
-      (Météo-France) pour les deux premiers jours, <strong>ARPEGE</strong> jusqu'à 4 jours, puis ICON / ECMWF au-delà.
+      <p>Uniquement des modèles <strong>Météo-France</strong> via Open-Meteo : <strong>AROME 1,3 km</strong>
+      pour les deux premiers jours, puis <strong>ARPEGE</strong>, soit environ <strong>4 jours</strong> d'échéance.
+      C'est volontairement plus court qu'avant : au-delà, il fallait basculer sur des modèles globaux
+      bien moins fins, et l'horizon utile en vol libre dépasse rarement 2 à 4 jours.
       Chaque interrogation précise <strong>l'altitude réelle du décollage</strong>, ce qui corrige les valeurs par
       rapport au relief lissé du modèle - un décollage à 1 900 m n'a pas la météo du fond de vallée.</p>
+      <p><strong>Balises OpenWindMap.</strong> Chaque fiche de spot affiche le vent <em>réellement mesuré</em>
+      par les balises communautaires situées à moins de 20 km, avec l'heure de la mesure. Un modèle prévoit,
+      une balise constate : en cas de désaccord, c'est la balise qui a raison.</p>
       <p>Pour l'analyse fine (émagramme, ascendances, couches), rien ne remplace
       <a href="https://meteo-parapente.com" target="_blank" rel="noopener">Météo-Parapente</a> et son modèle WRF 1,2 km :
       chaque fiche de spot contient un lien direct vers le bon point, au bon jour et à la bonne heure.</p>
@@ -486,6 +577,16 @@ function renderMethodoPage() {
       d'où les liens vers les fiches officielles <em>federation.ffvl.fr</em>, les clubs gestionnaires et les
       atterrissages. Quand un spot existe dans les deux bases, les orientations sont fusionnées et l'information
       la plus complète l'emporte.</p>
+
+      <h2>Ce qu'on affiche, ce qu'on n'affiche pas</h2>
+      <p>Tout le texte d'une fiche vient des sources, jamais d'une rédaction maison : décrire un site
+      qu'on n'a pas volé conduit à écrire des choses fausses. Chaque spot porte un niveau de
+      <strong>confiance</strong> (bonnes, moyennes, limitées, insuffisantes) et la liste de ce qui manque.
+      <strong>Les spots dont l'orientation de décollage est inconnue ne reçoivent aucun score</strong> :
+      sans orientation, impossible de dire si le vent est de face ou de cul, et un chiffre inventé
+      serait pire que pas de chiffre.</p>
+      <p>Les entrées qui sont en réalité des atterrissages sont écartées automatiquement (nom explicite,
+      ou point sans orientation ni description situé en fond de vallée sous un décollage voisin).</p>
 
       <h2>Limites</h2>
       <p>La maille des modèles (1 à 11 km selon l'échéance) ne résout pas les effets très locaux
@@ -609,10 +710,12 @@ async function init() {
   initMap();
   setupCitySearch();
 
-  const [spotsData, index] = await Promise.all([
+  const [spotsData, index, beaconsData] = await Promise.all([
     fetch("data/spots.json").then((r) => r.json()),
     fetch("data/forecasts/index.json").then((r) => r.json()).catch(() => null),
+    fetch("data/beacons.json").then((r) => r.json()).catch(() => null),
   ]);
+  state.beacons = beaconsData?.beacons || [];
   state.spots = spotsData.spots;
   state.index = index;
   if (index) state.meta = { time_start: index.time_start, hours: index.hours, fetched_at: index.fetched_at, model: index.model };
