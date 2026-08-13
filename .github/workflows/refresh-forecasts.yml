@@ -2,36 +2,55 @@ name: Rafraîchir les prévisions météo
 
 on:
   schedule:
-    - cron: "10 */6 * * *" # toutes les 6 h
+    - cron: "12 * * * *" # toutes les heures
   workflow_dispatch:
 
 permissions:
   contents: write
+
+concurrency:
+  group: refresh-forecasts
+  cancel-in-progress: false
 
 jobs:
   refresh:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
           node-version: 22
 
-      - name: Récupérer les dernières prévisions (snapshot horodaté)
+      - name: Récupérer les dernières prévisions
         run: node scripts/fetch-forecast.js
 
-      - name: Committer le snapshot sur main
+      # Les prévisions "latest" changent toutes les heures : les committer sur main
+      # ferait grossir le dépôt de plusieurs Go par an. Seules les archives
+      # (toutes les 6 h, jeu de référence, purgées à 7 jours) sont versionnées.
+      - name: Committer les archives sur main
         run: |
           git config user.name "petitoizo-bot"
           git config user.email "actions@github.com"
-          git add public/data/forecasts
-          git diff --cached --quiet || git commit -m "météo: snapshot $(date -u +%Y-%m-%dT%H:%M)Z [skip ci]"
-          git push origin main
+          git add public/data/forecasts/archive public/data/forecasts/index.json
+          if git diff --cached --quiet; then
+            echo "aucune archive à committer"
+          else
+            git commit -m "météo: archive $(date -u +%Y-%m-%dT%H:%M)Z [skip ci]"
+            git pull --rebase --autostash origin main
+            git push origin HEAD:main
+          fi
 
-      - name: Publier sur gh-pages
+      # Publication : branche orpheline reconstruite à chaque fois et poussée en force.
+      # L'historique de gh-pages ne s'accumule donc jamais, malgré 24 publications/jour.
+      - name: Publier le site sur gh-pages
         run: |
-          git branch -f gh-pages "$(git subtree split --prefix public)"
-          git push -f origin gh-pages
+          cd public
+          git init -q -b gh-pages
+          git config user.name "petitoizo-bot"
+          git config user.email "actions@github.com"
+          git add -A
+          git commit -q -m "site $(date -u +%Y-%m-%dT%H:%MZ)"
+          git push -q -f "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" gh-pages
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

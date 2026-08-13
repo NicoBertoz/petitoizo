@@ -1,4 +1,4 @@
-// Petitoizo — moteur de score de volabilité.
+// Petitoizo - moteur de score de volabilité.
 // Module partagé navigateur / Node. Voir METHODOLOGY.md pour la méthodologie complète.
 
 export const SPORTS = {
@@ -114,7 +114,7 @@ export function scoreSpotHour(spot, wx, opts = {}) {
     let s = 1, detail;
     if (wx.precip >= 0.5) {
       s = 0;
-      detail = `Pluie prévue (${r1(wx.precip)} mm/h) : une voile mouillée perd ses qualités de vol et risque le décrochage — on ne vole pas sous la pluie.`;
+      detail = `Pluie prévue (${r1(wx.precip)} mm/h) : une voile mouillée perd ses qualités de vol et risque le décrochage - on ne vole pas sous la pluie.`;
     } else if (wx.precip > 0.05 || (wx.precipProb ?? 0) >= 60) {
       s = 0.25;
       detail = `Risque d'averses (${wx.precipProb ?? "?"} % de probabilité) : à surveiller sur place, une voile mouillée est dangereuse.`;
@@ -136,7 +136,7 @@ export function scoreSpotHour(spot, wx, opts = {}) {
     let s, detail;
     if (!best.length) {
       s = 0.6;
-      detail = "Orientation du décollage non renseignée : impossible de vérifier l'alignement du vent — prudence.";
+      detail = "Orientation du décollage non renseignée : impossible de vérifier l'alignement du vent - prudence.";
     } else if (windLight) {
       s = 0.9;
       detail = `Vent très faible (${r1(wx.windSpeed)} km/h) : l'orientation du décollage importe peu, décollage en course possible.`;
@@ -169,9 +169,9 @@ export function scoreSpotHour(spot, wx, opts = {}) {
     if (wx.windSpeed > w[3]) {
       detail = `${r1(wx.windSpeed)} km/h de vent moyen : au-delà du maximum de sécurité (${w[3]} km/h) pour un pilote ${level} en ${sport.label.toLowerCase()}. Risque de reculer en l'air ou de ne pas pouvoir contrôler la voile au sol.`;
     } else if (s === 1) {
-      detail = `${r1(wx.windSpeed)} km/h : force de vent idéale pour un pilote ${level} (fenêtre confortable : ${w[1]}–${w[2]} km/h).`;
+      detail = `${r1(wx.windSpeed)} km/h : force de vent idéale pour un pilote ${level} (fenêtre confortable : ${w[1]}-${w[2]} km/h).`;
     } else if (wx.windSpeed > w[2]) {
-      detail = `${r1(wx.windSpeed)} km/h : vent soutenu, en haut de la fenêtre recommandée pour un pilote ${level} (${w[1]}–${w[2]} km/h). Pilotage plus exigeant.`;
+      detail = `${r1(wx.windSpeed)} km/h : vent soutenu, en haut de la fenêtre recommandée pour un pilote ${level} (${w[1]}-${w[2]} km/h). Pilotage plus exigeant.`;
     } else {
       detail = `${r1(wx.windSpeed)} km/h : vent faible, décollage en course et vol plouf probable (peu de portance dynamique).`;
     }
@@ -203,7 +203,7 @@ export function scoreSpotHour(spot, wx, opts = {}) {
     if (s === 0) {
       detail = `Vent météo de ${r1(wx.windMeta)} km/h${metaDirName ? ` ${fromDir(metaDirName)}` : ""} vers 1 500 m : trop fort. Même si la brise en vallée semble gérable, un vent d'altitude pareil crée des turbulences sous le vent des reliefs et un fort risque de dérive arrière.`;
     } else if (s < 1) {
-      detail = `Vent météo de ${r1(wx.windMeta)} km/h${metaDirName ? ` ${fromDir(metaDirName)}` : ""} vers 1 500 m : sensible en altitude. Le seuil de vigilance pour un pilote ${level} est ${warn} km/h — gardez de la marge par rapport au relief.`;
+      detail = `Vent météo de ${r1(wx.windMeta)} km/h${metaDirName ? ` ${fromDir(metaDirName)}` : ""} vers 1 500 m : sensible en altitude. Le seuil de vigilance pour un pilote ${level} est ${warn} km/h - gardez de la marge par rapport au relief.`;
     } else {
       detail = `Vent météo faible en altitude (${r1(wx.windMeta)} km/h vers 1 500 m) : pas de sur-vitesse à craindre en prenant de la hauteur.`;
     }
@@ -215,13 +215,13 @@ export function scoreSpotHour(spot, wx, opts = {}) {
     let s = 1, detail;
     if (wx.cape >= 1800) {
       s = 0;
-      detail = `CAPE de ${Math.round(wx.cape)} J/kg : atmosphère très instable, risque orageux marqué. Un cumulonimbus aspire tout ce qui vole — on reste au sol.`;
+      detail = `CAPE de ${Math.round(wx.cape)} J/kg : atmosphère très instable, risque orageux marqué. Un cumulonimbus aspire tout ce qui vole - on reste au sol.`;
     } else if (wx.cape >= 1000) {
       s = 0.4;
       detail = `CAPE de ${Math.round(wx.cape)} J/kg : instabilité notable, développements orageux possibles dans l'après-midi. Voler tôt et surveiller les congestus.`;
     } else if (wx.cape >= 500) {
       s = 0.8;
-      detail = `CAPE de ${Math.round(wx.cape)} J/kg : instabilité modérée — bons thermiques probables, surveiller l'évolution du ciel.`;
+      detail = `CAPE de ${Math.round(wx.cape)} J/kg : instabilité modérée - bons thermiques probables, surveiller l'évolution du ciel.`;
     } else {
       detail = `Atmosphère stable (CAPE ${Math.round(wx.cape)} J/kg) : pas de risque orageux.`;
     }
@@ -249,7 +249,22 @@ export function scoreSpotHour(spot, wx, opts = {}) {
     } else {
       detail = `Créneau horaire sans particularité aérologique pour un pilote ${level}.`;
     }
-    factors.push({ key: "thermal", label: "Aérologie du créneau", score: s, weight: 1, gate: false, detail });
+
+    // Plafond de la couche convective : hauteur à laquelle les thermiques s'arrêtent.
+    // C'est ce qui distingue un vol "plouf" d'un vol où l'on peut prendre de l'altitude.
+    if (wx.blh != null) {
+      const ceilingASL = Math.round((wx.elevation ?? 0) + wx.blh);
+      const above = ceilingASL - (spot.altitude ?? wx.elevation ?? 0);
+      if (wx.blh < 300) {
+        s = Math.min(s, 0.75);
+        detail += ` Le plafond de la couche convective est très bas (${wx.blh} m au-dessus du sol) : masse d'air stable, pas d'ascendances - vol de descente uniquement.`;
+      } else if (above > 1200 && h >= 11 && h <= 17) {
+        detail += ` Le plafond de la couche convective monte à ~${ceilingASL} m, soit ${above} m au-dessus du décollage : de quoi réellement prendre de l'altitude.`;
+      } else {
+        detail += ` Plafond de la couche convective estimé à ~${ceilingASL} m (${above > 0 ? `${above} m au-dessus` : "en dessous"} du décollage).`;
+      }
+    }
+    factors.push({ key: "thermal", label: "Aérologie du créneau", score: s, weight: 1.5, gate: false, detail });
   }
 
   // ---- Agrégation ----
@@ -278,7 +293,7 @@ export function scoreSpotHour(spot, wx, opts = {}) {
 
 /**
  * Meilleur créneau du jour : max des scores horaires (heures de jour).
- * hours: [{...wx}] — renvoie {score, verdict, color, bestHour, hourly:[{hour,score,verdict,color}]}
+ * hours: [{...wx}] - renvoie {score, verdict, color, bestHour, hourly:[{hour,score,verdict,color}]}
  */
 export function scoreSpotDay(spot, hours, opts) {
   let best = null;

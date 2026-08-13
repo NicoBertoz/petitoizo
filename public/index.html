@@ -3,20 +3,20 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Petitoizo — où voler aujourd'hui ?</title>
-  <meta name="description" content="Choisissez où aller voler en parapente en sécurité, selon les conditions météo prévues, votre niveau et votre sport." />
+  <title>Petitoizo - où voler aujourd'hui ?</title>
+  <meta name="description" content="Tous les spots de vol libre de France, notés heure par heure selon la météo, votre niveau et votre pratique." />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🪂</text></svg>" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=2" />
+  <link rel="stylesheet" href="styles.css?v=3" />
 </head>
 <body>
   <header class="topbar">
     <a class="brand" href="#/">
       <span class="brand-icon">🪂</span>
-      <span><strong>Petitoizo</strong><small>perché tout là-haut</small></span>
+      <span><strong>Petitoizo</strong><small id="spot-count">perché tout là-haut</small></span>
     </a>
     <div class="prefs">
       <label>Sport
@@ -72,6 +72,6 @@
   </footer>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script type="module" src="app.js?v=2"></script>
+  <script type="module" src="app.js?v=3"></script>
 </body>
 </html>

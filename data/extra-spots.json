@@ -1,7 +1,7 @@
 [
   {
     "pge_id": null,
-    "name": "Challes-les-Eaux — Mont Saint-Michel",
+    "name": "Challes-les-Eaux - Mont Saint-Michel",
     "lat": 45.5455,
     "lon": 5.9905,
     "altitude": 890,
@@ -13,9 +13,9 @@
     "xc": true,
     "hike": false,
     "takeoff_description": "Décollage du Mont Saint-Michel, large pente herbeuse face Ouest/Nord-Ouest dominant Challes-les-Eaux.",
-    "going_there": "Depuis Challes-les-Eaux, route de la Thuile puis Curienne ; navettes des écoles locales. Gare SNCF Chambéry–Challes-les-Eaux à proximité de l'atterrissage.",
+    "going_there": "Depuis Challes-les-Eaux, route de la Thuile puis Curienne ; navettes des écoles locales. Gare SNCF Chambéry-Challes-les-Eaux à proximité de l'atterrissage.",
     "weather_notes": "Brise de vallée bien établie l'après-midi. Éviter par vent d'Est (vent de cul au décollage et rotors sous le vent du relief).",
-    "comments": "Site historique du vol libre savoyard, berceau d'écoles de parapente. Coordonnées indicatives — se référer au balisage local.",
+    "comments": "Site historique du vol libre savoyard, berceau d'écoles de parapente. Coordonnées indicatives - se référer au balisage local.",
     "flight_rules": "Proximité de l'aérodrome de Challes-les-Eaux : respecter les consignes locales et les axes de la piste planeurs.",
     "pge_link": "",
     "landing": {
@@ -28,7 +28,7 @@
     "famous": true,
     "level_min": "débutant",
     "transport": ["voiture", "train", "navette"],
-    "transport_notes": "Gare SNCF Chambéry–Challes-les-Eaux proche de l'atterrissage ; navettes écoles pour remonter au décollage.",
+    "transport_notes": "Gare SNCF Chambéry-Challes-les-Eaux proche de l'atterrissage ; navettes écoles pour remonter au décollage.",
     "fr_notes": "Le site école emblématique de Chambéry. Décollage Ouest/Nord-Ouest au Mont Saint-Michel, atterrissage vaste près de l'aérodrome. Aérologie douce le matin et en fin de journée, thermique actif en mi-journée."
   }
 ]
