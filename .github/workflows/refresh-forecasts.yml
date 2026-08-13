@@ -1,0 +1,37 @@
+name: Rafraîchir les prévisions météo
+
+on:
+  schedule:
+    - cron: "10 */6 * * *" # toutes les 6 h
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Récupérer les dernières prévisions (snapshot horodaté)
+        run: node scripts/fetch-forecast.js
+
+      - name: Committer le snapshot sur main
+        run: |
+          git config user.name "petitoizo-bot"
+          git config user.email "actions@github.com"
+          git add public/data/forecasts
+          git diff --cached --quiet || git commit -m "météo: snapshot $(date -u +%Y-%m-%dT%H:%M)Z [skip ci]"
+          git push origin main
+
+      - name: Publier sur gh-pages
+        run: |
+          git branch -f gh-pages "$(git subtree split --prefix public)"
+          git push -f origin gh-pages
