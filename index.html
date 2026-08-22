@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Petitoizo - où voler aujourd'hui ?</title>
+  <meta name="description" content="Tous les spots de vol libre de France, notés heure par heure selon la météo, votre niveau et votre pratique." />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🪂</text></svg>" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css?v=6" />
+</head>
+<body>
+  <div id="disclosure" class="disclosure-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="disclosure-title">
+    <div class="disclosure-card">
+      <div class="disclosure-bird" aria-hidden="true">🪂</div>
+      <h2 id="disclosure-title">Avant de commencer</h2>
+      <p>⚠️ Petitoizo est une aide à la décision, pas une autorisation de vol. Consultez toujours les balises FFVL, la biroute et les pilotes locaux avant de décoller.</p>
+      <label class="bird-check">
+        <input type="checkbox" id="disclosure-check" />
+        <span class="bird-box" aria-hidden="true">
+          <svg viewBox="0 0 32 32" width="26" height="26">
+            <path class="bird-path" d="M3 18c5 1 8-1 10-4 1.6-2.4 3.4-4.6 6.5-5.2 2.6-.5 5 .4 6.6 2.1.7.8 1.5.9 2.4.7l1.5-.4-1.1 1.8c-.5.9-.4 1.5.1 2.3.8 1.3.7 2.9-.3 4.3-2.6 3.7-7.4 6.4-12.6 6.4C9.9 26 5.6 23 3 18z"/>
+            <circle class="bird-eye" cx="21.5" cy="11.6" r="1.05"/>
+          </svg>
+        </span>
+        <span class="bird-label">J'ai lu et je comprends</span>
+      </label>
+      <button id="disclosure-ok" class="disclosure-btn" disabled>Valider</button>
+    </div>
+  </div>
+  <header class="topbar">
+    <a class="brand" href="#/">
+      <span class="brand-icon">🪂</span>
+      <span><strong>Petitoizo</strong><small id="spot-count">perché tout là-haut</small></span>
+    </a>
+    <div class="prefs">
+      <label>Sport
+        <select id="sport-select"></select>
+      </label>
+      <label>Niveau
+        <select id="level-select"></select>
+      </label>
+    </div>
+  </header>
+
+  <main id="view-list" class="view">
+    <section class="controls">
+      <div class="control-row">
+        <div class="search-field">
+          <span class="search-icon" aria-hidden="true">🔎</span>
+          <input id="city-input" type="text" placeholder="Où décolle-t-on ? (ville, code postal…)" autocomplete="off" />
+          <button id="btn-geoloc" class="geoloc-btn" title="Utiliser ma position" aria-label="Utiliser ma position">📍</button>
+          <div id="city-suggestions" class="suggestions hidden"></div>
+        </div>
+        <div class="select-field">
+          <span class="select-icon" aria-hidden="true">📅</span>
+          <select id="day-select" aria-label="Jour de vol"></select>
+        </div>
+      </div>
+      <div class="hour-row">
+        <span class="hour-label">Créneau</span>
+        <div id="hour-chips" class="hour-chips"></div>
+      </div>
+    </section>
+
+    <section class="content">
+      <div id="map"></div>
+      <div class="list-pane">
+        <div id="wx-status" class="wx-status"></div>
+        <div id="spot-list" class="spot-list"><p class="muted">Chargement…</p></div>
+      </div>
+    </section>
+  </main>
+
+  <main id="view-spot" class="view hidden"></main>
+
+  <footer class="foot">
+    <div>
+      Météo : <select id="snapshot-select"></select>
+    </div>
+    <div class="foot-links">
+      <a href="#/methodo">Comprendre le score</a>
+      <span>·</span>
+      <span>Données spots : ParaglidingEarth / FFVL · Météo : Open-Meteo</span>
+    </div>
+    <p class="disclaimer">⚠️ Petitoizo décrit ce que les modèles prévoient, il ne recommande jamais de voler. Aucun chiffre affiché ici ne remplace les balises, la manche à air, la réglementation du site et l'avis des pilotes locaux.</p>
+  </footer>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script type="module" src="app.js?v=6"></script>
+</body>
+</html>
